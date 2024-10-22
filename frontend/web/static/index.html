@@ -3,24 +3,144 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Index</title>
-    <script
-      src="https://cdnjs.cloudflare.com/ajax/libs/htmx/2.0.3/htmx.min.js"
-      integrity="sha512-dQu3OKLMpRu85mW24LA1CUZG67BgLPR8Px3mcxmpdyijgl1UpCM1RtJoQP6h8UkufSnaHVRTUx98EQT9fcKohw=="
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-    ></script>
-    <script
-      src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.slim.min.js"
-      integrity="sha512-sNylduh9fqpYUK5OYXWcBleGzbZInWj8yCJAU57r1dpSK9tP2ghf/SRYCMj+KsslFkCOt3TvJrX2AV/Gc3wOqA=="
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-    ></script>
+    <title>Todo List</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
   </head>
 
-  <body>
-    <h1>Todo List</h1>
-    <button hx-get="/example">Get Todos</button>
-    <div id="todo-list"></div>
+  <body
+    class="bg-gray-100 flex flex-col items-center justify-center min-h-screen"
+  >
+    <h1 class="text-4xl font-bold mb-6">Todo List</h1>
+
+    <div class="mb-4 flex">
+      <input
+        type="text"
+        id="todo-input"
+        class="border p-2 rounded"
+        placeholder="Enter todo description"
+      />
+      <input type="date" id="due-date" class="border p-2 rounded ml-2" />
+      <button
+        id="add-todo"
+        class="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600 transition ml-2"
+      >
+        Add Todo
+      </button>
+    </div>
+
+    <button
+      id="get-todos"
+      class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition"
+    >
+      Get Todos
+    </button>
+
+    <div
+      id="todo-list"
+      class="mt-6 w-full max-w-md bg-white rounded-lg shadow-lg p-4"
+    >
+      <h2 class="text-xl font-semibold mb-2">Your Todos</h2>
+      <div id="todos-container" class="max-h-60 overflow-y-auto">
+        <!-- Todo items will be populated here -->
+      </div>
+    </div>
+
+    <script>
+      document
+        .getElementById("get-todos")
+        .addEventListener("click", function () {
+          axios
+            .get("http://localhost:5000/todos")
+            .then(function (response) {
+              const todos = response.data.reverse(); // Reverse the order of the todos
+              const todosContainer = document.getElementById("todos-container");
+              todosContainer.innerHTML = ""; // Clear previous list
+
+              todos.forEach((todo) => {
+                const todoItem = createTodoItem(todo);
+                todosContainer.appendChild(todoItem); // Append to the bottom
+              });
+            })
+            .catch(function (error) {
+              console.error("Error fetching todos:", error);
+            });
+        });
+
+      document
+        .getElementById("add-todo")
+        .addEventListener("click", function () {
+          const todoInput = document.getElementById("todo-input");
+          const dueDateInput = document.getElementById("due-date");
+          const todoDescription = todoInput.value.trim();
+          const dueDate = dueDateInput.value;
+
+          // Validate input
+          if (todoDescription && dueDate) {
+            // Format dueDate to ensure it's in ISO format
+            const formattedDueDate = new Date(dueDate).toISOString();
+
+            axios
+              .post("http://localhost:5000/todos", {
+                description: todoDescription,
+                dueDate: formattedDueDate, // Send the formatted date
+              })
+              .then(function (response) {
+                // Clear the input fields after adding
+                todoInput.value = "";
+                dueDateInput.value = "";
+
+                // Create new todo item and prepend it to the top
+                const newTodo = {
+                  id: response.data.id,
+                  description: todoDescription,
+                  dueDate: formattedDueDate,
+                };
+                const todosContainer =
+                  document.getElementById("todos-container");
+                const newTodoItem = createTodoItem(newTodo);
+                todosContainer.insertBefore(
+                  newTodoItem,
+                  todosContainer.firstChild
+                ); // Prepend to the top
+              })
+              .catch(function (error) {
+                console.error("Error adding todo:", error);
+              });
+          } else {
+            alert("Please enter a todo description and select a due date.");
+          }
+        });
+
+      function createTodoItem(todo) {
+        const todoItem = document.createElement("div");
+        todoItem.className = "border-b py-2 flex justify-between items-center";
+        todoItem.textContent = `${todo.id}: ${
+          todo.description
+        } (Due: ${new Date(todo.dueDate).toLocaleDateString()})`;
+
+        const deleteButton = document.createElement("button");
+        deleteButton.className =
+          "bg-red-500 text-white py-1 px-2 rounded hover:bg-red-600 transition ml-4";
+        deleteButton.textContent = "Delete";
+        deleteButton.onclick = function () {
+          axios
+            .delete(`http://localhost:5000/todos/${todo.id}`)
+            .then(function (response) {
+              // Refresh the list after deletion
+              document.getElementById("get-todos").click();
+            })
+            .catch(function (error) {
+              console.error("Error deleting todo:", error);
+            });
+        };
+
+        todoItem.appendChild(deleteButton);
+        return todoItem;
+      }
+    </script>
   </body>
 </html>
