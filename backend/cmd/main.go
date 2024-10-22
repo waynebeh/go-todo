@@ -3,14 +3,20 @@ package main
 import (
 	"Todo-go-htmx/internal/handler"
 	"Todo-go-htmx/internal/middleware"
+
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	r := gin.Default()
+	r := gin.New()
 
-	// Cors Middleware
+	// middleware
+	r.Use(gin.Recovery())
+	r.Use(middleware.LoggingMiddleware())
 	r.Use(middleware.CORSConfig())
+	r.Use(middleware.SecurityMiddleware())
+
+	// routes
 	r.GET("/todos", handler.GetTodos)
 	r.GET("/todos/:id", handler.GetTodosById)
 	r.POST("/todos", handler.CreateTodo)     
